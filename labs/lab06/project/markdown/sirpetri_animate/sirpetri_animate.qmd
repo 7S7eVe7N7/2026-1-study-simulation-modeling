@@ -1,9 +1,12 @@
 ```{julia}
+using Pkg
 using DrWatson
-@quickactivate "project"
+Pkg.activate("../project")
 include(srcdir("SIRPetri.jl"))
 using .SIRPetri
 using DataFrames, CSV, Plots
+gr(fmt = :png)
+default(fmt = :png, size = (800, 500))
 ```
 
 Параметры (можно оставить ваши или настроить под конкретный запуск)

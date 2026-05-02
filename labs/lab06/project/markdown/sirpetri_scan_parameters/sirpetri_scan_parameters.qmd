@@ -1,9 +1,12 @@
 ```{julia}
+using Pkg
 using DrWatson
-@quickactivate "project"
+Pkg.activate("../project")
 include(srcdir("SIRPetri.jl"))
 using .SIRPetri
 using DataFrames, CSV, Plots
+gr(fmt = :png)
+default(fmt = :png, size = (800, 500))
 ```
 
 Диапазон β
@@ -38,6 +41,8 @@ p = plot(
 	ylabel = "Population",
 )
 savefig(plotsdir("sir_scan.png"))
+
+display(p)
 
 println("Сканирование β завершено. Результат в data/sir_scan.csv")
 ```

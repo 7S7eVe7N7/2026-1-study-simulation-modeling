@@ -1,10 +1,13 @@
 ```{julia}
+using Pkg
 using DrWatson
-@quickactivate "project"
+Pkg.activate("../project")
 using Random
 include(srcdir("SIRPetri.jl"))
 using .SIRPetri
 using DataFrames, CSV, Plots
+gr(fmt = :png)
+default(fmt = :png, size = (800, 500))
 ```
 
 Параметры
@@ -44,5 +47,8 @@ savefig(plotsdir("sir_det_dynamics.png"))
 p_stoch = plot_sir(df_stoch)
 savefig(plotsdir("sir_stoch_dynamics.png"))
 println("Базовый прогон завершён. Результаты в data/ и plots/")
+
+display(p_det)
+display(p_stoch)
 ```
 

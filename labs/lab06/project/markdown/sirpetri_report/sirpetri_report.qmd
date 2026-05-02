@@ -1,7 +1,10 @@
 ```{julia}
+using Pkg
 using DrWatson
-@quickactivate "project"
+Pkg.activate("../project")
 using DataFrames, CSV, Plots
+gr(fmt = :png)
+default(fmt = :png, size = (800, 500))
 
 df_det = CSV.read(datadir("sir_det.csv"), DataFrame)
 df_stoch = CSV.read(datadir("sir_stoch.csv"), DataFrame)
@@ -20,6 +23,7 @@ p1 = plot(
 	title = "Comparison",
 )
 savefig(plotsdir("comparison.png"))
+display(p1)
 ```
 
 Зависимость пика I от β
@@ -34,6 +38,8 @@ p2 = plot(
 	title = "Sensitivity",
 )
 savefig(plotsdir("sensitivity.png"))
+
+display(p2)
 
 println("Отчётные графики сохранены в plots/")
 ```
