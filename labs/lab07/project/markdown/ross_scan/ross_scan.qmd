@@ -1,0 +1,54 @@
+# Параметрическое сканирование модели Росса: влияние резерва
+
+Изменяем число запасных машин S и наблюдаем среднее время до падения.
+
+```{julia}
+using Pkg
+using DrWatson
+Pkg.activate("../project")
+using StableRNGs
+include(srcdir("RossModel.jl"))
+using .RossModel
+using Statistics, Plots, DataFrames, CSV
+gr(fmt = :png)
+default(fmt = :png, size = (800, 500))
+```
+
+## Сетка параметров
+
+```{julia}
+N = 10
+R = 2
+LAMBDA = 10.0
+MU = 1.0
+S_range = 1:5
+runs = 1
+rng = StableRNG(42)
+
+results = []
+for S in S_range
+    times = Float64[]
+    for _ = 1:runs
+        t, _ = sim_repair(rng, N, S, R, LAMBDA, MU)
+        push!(times, t)
+    end
+    avg = mean(times)
+    push!(results, (S=S, avg_crash=avg))
+end
+
+df = DataFrame(results)
+CSV.write(datadir("ross_scan.csv"), df)
+
+p = plot(df.S, df.avg_crash, marker=:circle,
+         xlabel="Число запасных машин S", ylabel="Среднее время до падения",
+         title="Зависимость времени падения от S (R=$R)")
+mkpath(plotsdir("lab07"))
+savefig(plotsdir("lab07", "ross_scan.png"))
+```
+
+## График
+
+```{julia}
+display(p)
+```
+
