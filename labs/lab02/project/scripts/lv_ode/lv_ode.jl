@@ -1,7 +1,6 @@
 using Pkg
-Pkg.activate("../project")
 using DrWatson
-@quickactivate "project"
+Pkg.activate("../project")
 using DifferentialEquations
 using DataFrames
 using StatsPlots

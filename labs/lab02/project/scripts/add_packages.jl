@@ -6,7 +6,7 @@ Pkg.activate(".") # Активируем текущий проект
 ## ОСНОВНЫЕ ПАКЕТЫ ДЛЯ РАБОТЫ
 packages = [
     "DrWatson", # Организация проекта
-    "DifferentialEquations", # Решение ОДУ
+    "OrdinaryDiffEq", # Решение ОДУ
     "Plots", # Визуализация
     "DataFrames", # Таблицы данных
     "CSV", # Работа с CSV
