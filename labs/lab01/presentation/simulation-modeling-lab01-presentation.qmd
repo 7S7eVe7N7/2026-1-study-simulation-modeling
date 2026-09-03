@@ -10,10 +10,10 @@ author:
       city: Москва
       address: ул. Миклухо-Маклая, д. 6
 ## Title
-title: Лабораторная работа №7
+title: Лабораторная работа №1
 subtitle: Имитационное моделирование
 license: CC BY
-date: 2026-05-16
+date: 2026-09-02
 date-format: "YYYY-MM-DD"
 ---
 
