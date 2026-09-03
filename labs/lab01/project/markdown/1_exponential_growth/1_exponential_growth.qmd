@@ -4,11 +4,13 @@
 ## Инициализация проекта и загрузка пакетов
 
 ```{julia}
+using Pkg
+Pkg.activate("../project")
 using DrWatson
-@quickactivate "project"
-
+@quickactivate("project")
 using OrdinaryDiffEq
 using Plots
+default(fmt = :png)
 using DataFrames
 using JLD2
 
