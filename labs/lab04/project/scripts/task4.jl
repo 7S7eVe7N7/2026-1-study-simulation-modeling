@@ -15,9 +15,8 @@ function create_migration_matrix(C, intensity)
 end
 
 # Функция для измерения времени достижения пика
-function peak_time(p)
-    # Создаём матрицу миграции на основе интенсивности
-    migration_rates = create_migration_matrix(p[:C], p[:migration_intensity])
+function peak_time(p) 
+    migration_rates = create_migration_matrix(p[:C], p[:migration_intensity])     # Создаём матрицу миграции на основе интенсивности
     model = initialize_sir(;
         Ns = p[:Ns],
         β_und = p[:β_und],
@@ -33,8 +32,7 @@ function peak_time(p)
     infected_frac(model) = count(a.status == :I for a in allagents(model)) / nagents(model)
     peak = 0.0
     peak_step = 0
-    for step = 1:p[:n_steps]
-        # Ручной шаг
+    for step = 1:p[:n_steps]         # Ручной шаг
         agent_ids = collect(allids(model))
         for id in agent_ids
             agent = try

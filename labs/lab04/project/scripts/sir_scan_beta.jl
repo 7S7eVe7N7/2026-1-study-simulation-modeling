@@ -8,12 +8,10 @@ include(srcdir("sir_model.jl"))
 
 # Функция для запуска одного эксперимента и возврата метрик
 function run_experiment(p)
-    # Создаём β_und и β_det на основе скалярного beta
-    beta = p[:beta]
+    beta = p[:beta]     # Создаём β_und и β_det на основе скалярного beta
     β_und = fill(beta, 3)
     β_det = fill(beta/10, 3)
-    # Передаём в модель
-    model = initialize_sir(;
+    model = initialize_sir(;     # Передаём в модель
         Ns = p[:Ns],
         β_und = β_und,
         β_det = β_det,
@@ -23,14 +21,13 @@ function run_experiment(p)
         reinfection_probability = p[:reinfection_probability],
         Is = p[:Is],
         seed = p[:seed],
-        n_steps = p[:n_steps], # этот параметр не используется в
-        # initialize_sir, но может быть нужен для цикла
+        n_steps = p[:n_steps], # этот параметр не используется в initialize_sir, но может быть нужен для цикла
     )
     infected_fraction(model) =
         count(a.status == :1 for a in allagents(model)) / nagents(model)
     peak_infected = 0.0
     for step = 1:p[:n_steps]
-        # Ручной шаг (безопасный)
+
         agent_ids = collect(allids(model))
         for id in agent_ids
             agent = try

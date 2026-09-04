@@ -6,12 +6,10 @@ using Agents, DataFrames, Plots, CSV, Random
 include(srcdir("sir_model.jl"))
 
 function run_experiment(p)
-
-    beta = p[:beta]
+    beta = p[:beta]     # Создаём β_und и β_det на основе скалярного beta
     β_und = fill(beta, 3)
     β_det = fill(beta/10, 3)
-
-    model = initialize_sir(;
+    model = initialize_sir(;     # Передаём в модель
         Ns = p[:Ns],
         β_und = β_und,
         β_det = β_det,
@@ -21,8 +19,7 @@ function run_experiment(p)
         reinfection_probability = p[:reinfection_probability],
         Is = p[:Is],
         seed = p[:seed],
-        n_steps = p[:n_steps], # этот параметр не используется в
-
+        n_steps = p[:n_steps], # этот параметр не используется в initialize_sir, но может быть нужен для цикла
     )
     infected_fraction(model) =
         count(a.status == :1 for a in allagents(model)) / nagents(model)

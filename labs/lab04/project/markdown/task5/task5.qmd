@@ -25,12 +25,7 @@ function run_quarantine_simulation(threshold; n_steps = 150)
     total_vals = Int[]
     closed_status = []
 
-    for step in 1:n_steps
-```
-
-Закрытие городов при превышении порога
-
-```{julia}
+    for step in 1:n_steps         # Закрытие городов при превышении порога
         for city in 1:model.C
             infected_frac = get_infected_fraction(model, city)
             if infected_frac > model.quarantine_threshold

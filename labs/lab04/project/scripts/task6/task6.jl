@@ -3,8 +3,7 @@ using DrWatson
 using BlackBoxOptim, Random, Statistics
 include(srcdir("sir_model.jl"))
 
-function cost_constrained(x)
-
+function cost_constrained(x)     # x[1]: β_und, x[2]: detection_time, x[3]: death_rate
     β_und = x[1]
     detection_time = round(Int, x[2])
     death_rate = x[3]
@@ -38,8 +37,7 @@ function cost_constrained(x)
         push!(deaths_fracs, deaths / total_pop)
     end
     mean_peak = mean(peak_fracs)
-    mean_deaths = mean(deaths_fracs)
-
+    mean_deaths = mean(deaths_fracs)     # Штраф, если пик > 30%
     penalty = if mean_peak > 0.3
         10.0 * (mean_peak - 0.3)^2
     else

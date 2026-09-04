@@ -5,8 +5,7 @@ using BlackBoxOptim, Random, Statistics
 include(srcdir("sir_model.jl"))
 
 # Целевая функция: минимизируем пиковую заболеваемость и смертность
-function cost_multi(x)
-    # x[1]: β_und, x[2]: death_rate, x[3]: detection_time
+function cost_multi(x)     # x[1]: β_und, x[2]: death_rate, x[3]: detection_time
     model = initialize_sir(;
         Ns = [1000, 1000, 1000],
         β_und = fill(x[1], 3),
@@ -22,8 +21,7 @@ function cost_multi(x)
     infected_frac(model) = count(a.status == :I for a in allagents(model)) / nagents(model)
     dead_count(model) = 3000 - nagents(model)
     peak_infected = 0.0
-    # Запускаем с несколькими повторами
-    replicates = 5
+    replicates = 5     # Запускаем с несколькими повторами
     peak_vals = Float64[]
     dead_vals = Int[]
     for rep = 1:replicates
