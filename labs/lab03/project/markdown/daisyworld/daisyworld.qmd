@@ -27,16 +27,8 @@ plt2, _ = abmplot(model; heatarray = model.temperature, plotkwargs...)
 step!(model, 40)
 plt3, _ = abmplot(model; heatarray = model.temperature, plotkwargs...)
 
-plt1
-
 save(plotsdir("daisy_step001.png"), plt1)
-
-plt2
-
 save(plotsdir("daisy_step005.png"), plt2)
-
-plt3
-
 save(plotsdir("daisy_step040.png"), plt3)
 ```
 
