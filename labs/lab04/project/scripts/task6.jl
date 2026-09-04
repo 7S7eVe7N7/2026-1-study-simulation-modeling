@@ -1,0 +1,65 @@
+using DrWatson
+@quickactivate "project"
+using BlackBoxOptim, Random, Statistics
+include(srcdir("sir_model.jl"))
+
+function cost_constrained(x)
+    # x[1]: β_und, x[2]: detection_time, x[3]: death_rate
+    β_und = x[1]
+    detection_time = round(Int, x[2])
+    death_rate = x[3]
+    Ns = [1000,1000,1000]
+    total_pop = 3000
+    replicates = 5
+    peak_fracs = Float64[]
+    deaths_fracs = Float64[]
+    for rep in 1:replicates
+        model = initialize_sir(;
+            Ns = Ns,
+            β_und = fill(β_und, 3),
+            β_det = fill(β_und/10, 3),
+            infection_period = 14,
+            detection_time = detection_time,
+            death_rate = death_rate,
+            reinfection_probability = 0.1,
+            Is = [0,0,1],
+            seed = 42 + rep,
+        )
+        peak = 0.0
+        for step in 1:100
+            Agents.step!(model, 1)
+            frac = count(a.status == :I for a in allagents(model)) / total_pop
+            if frac > peak
+                peak = frac
+            end
+        end
+        deaths = total_pop - nagents(model)
+        push!(peak_fracs, peak)
+        push!(deaths_fracs, deaths / total_pop)
+    end
+    mean_peak = mean(peak_fracs)
+    mean_deaths = mean(deaths_fracs)
+    # Штраф, если пик > 30%
+    penalty = if mean_peak > 0.3
+        10.0 * (mean_peak - 0.3)^2
+    else
+        0.0
+    end
+    return mean_deaths + penalty   # возвращаем Float64
+end
+
+result = bboptimize(
+    cost_constrained,
+    Method = :adaptive_de_rand_1_bin,
+    SearchRange = [(0.1, 1.0), (3.0, 14.0), (0.01, 0.1)],
+    NumDimensions = 3,
+    MaxTime = 120,   # 2 минуты
+    TraceMode = :compact,
+)
+best = best_candidate(result)
+fitness = best_fitness(result)
+println("Оптимальные параметры:")
+println("β_und = $(best[1])")
+println("Время выявления = $(round(Int, best[2])) дней")
+println("Смертность = $(best[3])")
+println("Целевое значение (средняя смертность + штраф) = $(fitness)")
