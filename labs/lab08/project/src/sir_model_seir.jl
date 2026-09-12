@@ -6,12 +6,12 @@ decrement!(a::Array{Int64}) = push!(a, a[end] - 1)
 carryover!(a::Array{Int64}) = push!(a, a[end])
 
 
-mutable struct SIRPerson
+mutable struct SEIRPerson
     id::Int64
     status::Symbol     
 end
 
-mutable struct SIRModel
+mutable struct SEIRModel
     sim::ConcurrentSim.Simulation
     β::Float64     
     c::Float64     
@@ -22,7 +22,7 @@ mutable struct SIRModel
     Ea::Array{Int64}
     Ia::Array{Int64}
     Ra::Array{Int64}
-    allIndividuals::Array{SIRPerson}
+    allIndividuals::Array{SEIRPerson}
 end
 
 
@@ -42,7 +42,7 @@ function recovery_update!(sim, m)
 end
 
 
-@resumable function live(env, individual::SIRPerson, m::SIRModel)
+@resumable function live(env, individual::SEIRPerson, m::SEIRModel)
 
     while individual.status == :S
         @yield timeout(env, rand(Exponential(1/m.c)))
@@ -77,40 +77,40 @@ end
 end
 
 
-function MakeSIRModel_seir(u0, p)
+function MakeSEIRModel_seir(u0, p)
     (S, E, I, R) = u0
     (β, c, γ, σ) = p
     N = S + E + I + R
     sim = ConcurrentSim.Simulation()
-    allIndividuals = SIRPerson[]
+    allIndividuals = SEIRPerson[]
     for i in 1:S
-        push!(allIndividuals, SIRPerson(i, :S))
+        push!(allIndividuals, SEIRPerson(i, :S))
     end
     for i in (S+1):(S+E)
-        push!(allIndividuals, SIRPerson(i, :E))
+        push!(allIndividuals, SEIRPerson(i, :E))
     end
     for i in (S+E+1):(S+E+I)
-        push!(allIndividuals, SIRPerson(i, :I))
+        push!(allIndividuals, SEIRPerson(i, :I))
     end
     for i in (S+E+I+1):N
-        push!(allIndividuals, SIRPerson(i, :R))
+        push!(allIndividuals, SEIRPerson(i, :R))
     end
     ta = Float64[0.0]
     Sa = Int64[S]; Ea = Int64[E]; Ia = Int64[I]; Ra = Int64[R]
-    SIRModel(sim, β, c, γ, σ, ta, Sa, Ea, Ia, Ra, allIndividuals)
+    SEIRModel(sim, β, c, γ, σ, ta, Sa, Ea, Ia, Ra, allIndividuals)
 end
 
 
-function activate_seir(m::SIRModel)
+function activate_seir(m::SEIRModel)
     for ind in copy(m.allIndividuals)
         @process live(m.sim, ind, m)
     end
 end
 
-function sir_run(m::SIRModel, tf::Float64)
+function sir_run(m::SEIRModel, tf::Float64)
     ConcurrentSim.run(m.sim, tf)
 end
 
-function out(m::SIRModel)
+function out(m::SEIRModel)
     DataFrame(t = m.ta, S = m.Sa, E = m.Ea, I = m.Ia, R = m.Ra)
 end

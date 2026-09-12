@@ -6,12 +6,12 @@ decrement!(a::Array{Int64}) = push!(a, a[end] - 1)
 carryover!(a::Array{Int64}) = push!(a, a[end])
 
 
-mutable struct SIRPerson
+mutable struct SIRPersonDem
     id::Int64
     status::Symbol     # :S, :I, :R, :D
 end
 
-mutable struct SIRModel
+mutable struct SIRModelDem
     sim::ConcurrentSim.Simulation
     β::Float64
     c::Float64
@@ -22,7 +22,7 @@ mutable struct SIRModel
     Sa::Array{Int64}
     Ia::Array{Int64}
     Ra::Array{Int64}
-    allIndividuals::Array{SIRPerson}
+    allIndividuals::Array{SIRPersonDem}
 end
 
 
@@ -51,11 +51,11 @@ function birth_update!(sim, m)
     push!(m.ta, ConcurrentSim.now(sim))
     increment!(m.Sa); carryover!(m.Ia); carryover!(m.Ra)
     new_id = length(m.allIndividuals) + 1
-    push!(m.allIndividuals, SIRPerson(new_id, :S))
+    push!(m.allIndividuals, SIRPersonDem(new_id, :S))
 end
 
 
-@resumable function live(env, individual::SIRPerson, m::SIRModel)
+@resumable function live(env, individual::SIRPersonDem, m::SIRModelDem)
     while individual.status == :S
         @yield timeout(env, rand(Exponential(1/m.c)))
         individual.status == :D && return
@@ -82,7 +82,7 @@ end
 end
 
 
-@resumable function lifespan(env, individual::SIRPerson, m::SIRModel)
+@resumable function lifespan(env, individual::SIRPersonDem, m::SIRModelDem)
     @yield timeout(env, rand(Exponential(1/m.μ)))
     if individual.status != :D
         old = individual.status
@@ -93,7 +93,7 @@ end
 end
 
 
-@resumable function births(env, m::SIRModel)
+@resumable function births(env, m::SIRModelDem)
     while true
         @yield timeout(env, rand(Exponential(1/m.ν)))
         birth_update!(env, m)
@@ -101,27 +101,27 @@ end
 end
 
 
-function MakeSIRModel_demography(u0, p)
+function MakeSIRModelDem_demography(u0, p)
     (S, I, R) = u0
     (β, c, γ, μ, ν) = p
     N = S + I + R
     sim = ConcurrentSim.Simulation()
-    allIndividuals = SIRPerson[]
+    allIndividuals = SIRPersonDem[]
     for i in 1:S
-        push!(allIndividuals, SIRPerson(i, :S))
+        push!(allIndividuals, SIRPersonDem(i, :S))
     end
     for i in (S+1):(S+I)
-        push!(allIndividuals, SIRPerson(i, :I))
+        push!(allIndividuals, SIRPersonDem(i, :I))
     end
     for i in (S+I+1):N
-        push!(allIndividuals, SIRPerson(i, :R))
+        push!(allIndividuals, SIRPersonDem(i, :R))
     end
     ta = Float64[0.0]; Sa = Int64[S]; Ia = Int64[I]; Ra = Int64[R]
-    SIRModel(sim, β, c, γ, μ, ν, ta, Sa, Ia, Ra, allIndividuals)
+    SIRModelDem(sim, β, c, γ, μ, ν, ta, Sa, Ia, Ra, allIndividuals)
 end
 
 
-function activate_demography(m::SIRModel)
+function activate_demography(m::SIRModelDem)
     for ind in copy(m.allIndividuals)
         @process live(m.sim, ind, m)
         @process lifespan(m.sim, ind, m)
@@ -129,10 +129,10 @@ function activate_demography(m::SIRModel)
     @process births(m.sim, m)
 end
 
-function sir_run(m::SIRModel, tf::Float64)
+function sir_run(m::SIRModelDem, tf::Float64)
     ConcurrentSim.run(m.sim, tf)
 end
 
-function out(m::SIRModel)
+function out(m::SIRModelDem)
     DataFrame(t = m.ta, S = m.Sa, I = m.Ia, R = m.Ra)
 end
