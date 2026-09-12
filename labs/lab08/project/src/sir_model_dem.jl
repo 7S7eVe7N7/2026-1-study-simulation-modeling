@@ -1,0 +1,138 @@
+using ResumableFunctions, ConcurrentSim, Distributions, DataFrames, Random
+
+
+increment!(a::Array{Int64}) = push!(a, a[end] + 1)
+decrement!(a::Array{Int64}) = push!(a, a[end] - 1)
+carryover!(a::Array{Int64}) = push!(a, a[end])
+
+
+mutable struct SIRPerson
+    id::Int64
+    status::Symbol     # :S, :I, :R, :D
+end
+
+mutable struct SIRModel
+    sim::ConcurrentSim.Simulation
+    β::Float64
+    c::Float64
+    γ::Float64
+    μ::Float64
+    ν::Float64
+    ta::Array{Float64}
+    Sa::Array{Int64}
+    Ia::Array{Int64}
+    Ra::Array{Int64}
+    allIndividuals::Array{SIRPerson}
+end
+
+
+function infection_update!(sim, m)
+    push!(m.ta, ConcurrentSim.now(sim))
+    decrement!(m.Sa); increment!(m.Ia); carryover!(m.Ra)
+end
+
+function recovery_update!(sim, m)
+    push!(m.ta, ConcurrentSim.now(sim))
+    carryover!(m.Sa); decrement!(m.Ia); increment!(m.Ra)
+end
+
+function death_update!(sim, m, status)
+    push!(m.ta, ConcurrentSim.now(sim))
+    if status == :S
+        decrement!(m.Sa); carryover!(m.Ia); carryover!(m.Ra)
+    elseif status == :I
+        carryover!(m.Sa); decrement!(m.Ia); carryover!(m.Ra)
+    else
+        carryover!(m.Sa); carryover!(m.Ia); decrement!(m.Ra)
+    end
+end
+
+function birth_update!(sim, m)
+    push!(m.ta, ConcurrentSim.now(sim))
+    increment!(m.Sa); carryover!(m.Ia); carryover!(m.Ra)
+    new_id = length(m.allIndividuals) + 1
+    push!(m.allIndividuals, SIRPerson(new_id, :S))
+end
+
+
+@resumable function live(env, individual::SIRPerson, m::SIRModel)
+    while individual.status == :S
+        @yield timeout(env, rand(Exponential(1/m.c)))
+        individual.status == :D && return
+        N = length(m.allIndividuals)
+        N <= 1 && continue
+        alter = individual
+        while alter === individual
+            alter = m.allIndividuals[rand(DiscreteUniform(1, N))]
+        end
+        if alter.status == :I
+            if rand(Uniform(0, 1)) < m.β
+                individual.status = :I
+                infection_update!(env, m)
+                break
+            end
+        end
+    end
+    if individual.status == :I
+        @yield timeout(env, rand(Exponential(1/m.γ)))
+        individual.status == :D && return
+        individual.status = :R
+        recovery_update!(env, m)
+    end
+end
+
+
+@resumable function lifespan(env, individual::SIRPerson, m::SIRModel)
+    @yield timeout(env, rand(Exponential(1/m.μ)))
+    if individual.status != :D
+        old = individual.status
+        individual.status = :D
+        death_update!(env, m, old)
+        filter!(x -> x !== individual, m.allIndividuals)
+    end
+end
+
+
+@resumable function births(env, m::SIRModel)
+    while true
+        @yield timeout(env, rand(Exponential(1/m.ν)))
+        birth_update!(env, m)
+    end
+end
+
+
+function MakeSIRModel_demography(u0, p)
+    (S, I, R) = u0
+    (β, c, γ, μ, ν) = p
+    N = S + I + R
+    sim = ConcurrentSim.Simulation()
+    allIndividuals = SIRPerson[]
+    for i in 1:S
+        push!(allIndividuals, SIRPerson(i, :S))
+    end
+    for i in (S+1):(S+I)
+        push!(allIndividuals, SIRPerson(i, :I))
+    end
+    for i in (S+I+1):N
+        push!(allIndividuals, SIRPerson(i, :R))
+    end
+    ta = Float64[0.0]; Sa = Int64[S]; Ia = Int64[I]; Ra = Int64[R]
+    SIRModel(sim, β, c, γ, μ, ν, ta, Sa, Ia, Ra, allIndividuals)
+end
+
+
+function activate_demography(m::SIRModel)
+    for ind in copy(m.allIndividuals)
+        @process live(m.sim, ind, m)
+        @process lifespan(m.sim, ind, m)
+    end
+    @process births(m.sim, m)
+end
+
+function sir_run(m::SIRModel, tf::Float64)
+    ConcurrentSim.run(m.sim, tf)
+end
+
+function out(m::SIRModel)
+    DataFrame(t = m.ta, S = m.Sa, I = m.Ia, R = m.Ra)
+end
