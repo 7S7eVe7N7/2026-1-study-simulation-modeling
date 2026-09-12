@@ -1,0 +1,116 @@
+using ResumableFunctions, ConcurrentSim, Distributions, DataFrames, Random
+
+
+increment!(a::Array{Int64}) = push!(a, a[end] + 1)
+decrement!(a::Array{Int64}) = push!(a, a[end] - 1)
+carryover!(a::Array{Int64}) = push!(a, a[end])
+
+
+mutable struct SIRPerson
+    id::Int64
+    status::Symbol
+end
+
+mutable struct SIRModel
+    sim::ConcurrentSim.Simulation
+    β::Float64
+    c::Float64
+    γ::Float64
+    σ::Float64
+    ta::Array{Float64}
+    Sa::Array{Int64}
+    Ea::Array{Int64}
+    Ia::Array{Int64}
+    Ra::Array{Int64}
+    allIndividuals::Array{SIRPerson}
+end
+
+
+function infection_update!(sim, m)
+    push!(m.ta, ConcurrentSim.now(sim))
+    decrement!(m.Sa); increment!(m.Ea); carryover!(m.Ia); carryover!(m.Ra)
+end
+
+function exposed_update!(sim, m)
+    push!(m.ta, ConcurrentSim.now(sim))
+    carryover!(m.Sa); decrement!(m.Ea); increment!(m.Ia); carryover!(m.Ra)
+end
+
+function recovery_update!(sim, m)
+    push!(m.ta, ConcurrentSim.now(sim))
+    carryover!(m.Sa); carryover!(m.Ea); decrement!(m.Ia); increment!(m.Ra)
+end
+
+
+@resumable function live(env, individual::SIRPerson, m::SIRModel)
+
+    while individual.status == :S
+        @yield timeout(env, rand(Exponential(1/m.c)))
+        N = length(m.allIndividuals)
+        N <= 1 && continue
+        alter = individual
+        while alter === individual
+            alter = m.allIndividuals[rand(DiscreteUniform(1, N))]
+        end
+        if alter.status == :I
+            if rand(Uniform(0, 1)) < m.β
+                individual.status = :E
+                infection_update!(env, m)
+                break
+            end
+        end
+    end
+
+
+    if individual.status == :E
+        @yield timeout(env, rand(Exponential(1/m.σ)))
+        individual.status = :I
+        exposed_update!(env, m)
+    end
+
+
+    if individual.status == :I
+        @yield timeout(env, rand(Exponential(1/m.γ)))
+        individual.status = :R
+        recovery_update!(env, m)
+    end
+end
+
+
+function MakeSIRModel_seir(u0, p)
+    (S, E, I, R) = u0
+    (β, c, γ, σ) = p
+    N = S + E + I + R
+    sim = ConcurrentSim.Simulation()
+    allIndividuals = SIRPerson[]
+    for i in 1:S
+        push!(allIndividuals, SIRPerson(i, :S))
+    end
+    for i in (S+1):(S+E)
+        push!(allIndividuals, SIRPerson(i, :E))
+    end
+    for i in (S+E+1):(S+E+I)
+        push!(allIndividuals, SIRPerson(i, :I))
+    end
+    for i in (S+E+I+1):N
+        push!(allIndividuals, SIRPerson(i, :R))
+    end
+    ta = Float64[0.0]
+    Sa = Int64[S]; Ea = Int64[E]; Ia = Int64[I]; Ra = Int64[R]
+    SIRModel(sim, β, c, γ, σ, ta, Sa, Ea, Ia, Ra, allIndividuals)
+end
+
+
+function activate_seir(m::SIRModel)
+    for ind in copy(m.allIndividuals)
+        @process live(m.sim, ind, m)
+    end
+end
+
+function sir_run(m::SIRModel, tf::Float64)
+    ConcurrentSim.run(m.sim, tf)
+end
+
+function out(m::SIRModel)
+    DataFrame(t = m.ta, S = m.Sa, E = m.Ea, I = m.Ia, R = m.Ra)
+end
