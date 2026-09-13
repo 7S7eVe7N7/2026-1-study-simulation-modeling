@@ -1,6 +1,7 @@
 ```{julia}
+using Pkg
 using DrWatson
-@quickactivate "project"
+Pkg.activate("../project")
 include(srcdir("DiningPhilosophers.jl"))
 using .DiningPhilosophers
 using DataFrames, CSV, Plots
